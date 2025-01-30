@@ -31,10 +31,10 @@ let quotes = [
     const quoteCategory = document.getElementById('newQuoteCategory').value;
   
     if (quoteText && quoteCategory) {
-      quotes.push({ text: quoteText, category: quoteCategory });
-      document.getElementById('newQuoteText').value = '';
-      document.getElementById('newQuoteCategory').value = '';
+      const newQuote = { text: quoteText, category: quoteCategory };
+      quotes.push(newQuote);
       saveQuotes(); // Save updated quotes array
+      postQuoteToServer(newQuote); // Post new quote to server
       showRandomQuote();
       populateCategories(); // Update category filter
     }
@@ -94,7 +94,63 @@ let quotes = [
     fileReader.readAsText(event.target.files[0]);
   }
   
-  // Initialize the app
+  // Fetch quotes from the server (mock API)
+  function fetchQuotesFromServer() {
+    fetch('https://jsonplaceholder.typicode.com/posts')
+      .then(response => response.json())
+      .then(serverData => {
+        const newQuotes = serverData.map(post => ({
+          text: post.title,
+          category: 'General'
+        }));
+        syncQuotes(newQuotes);
+      })
+      .catch(error => console.error('Error fetching server data:', error));
+  }
+  
+  // Sync local quotes with server data
+  function syncQuotes(serverQuotes) {
+    const localQuotes = JSON.parse(localStorage.getItem('quotes')) || [];
+    
+    serverQuotes.forEach(serverQuote => {
+      const existingQuoteIndex = localQuotes.findIndex(localQuote => localQuote.text === serverQuote.text);
+      
+      if (existingQuoteIndex === -1) {
+        localQuotes.push(serverQuote);
+      } else {
+        localQuotes[existingQuoteIndex] = serverQuote;
+      }
+    });
+    
+    localStorage.setItem('quotes', JSON.stringify(localQuotes));
+    notifyDataUpdated(); // Show notification when data is synced
+  }
+  
+  // Periodically check for new quotes from the server
+  function startSyncingPeriodically() {
+    setInterval(() => {
+      fetchQuotesFromServer(); // Fetch quotes from the server periodically
+    }, 5000);
+  }
+  
+  // Show a notification
+  function showNotification(message) {
+    const notificationDiv = document.createElement('div');
+    notificationDiv.classList.add('notification');
+    notificationDiv.textContent = message;
+    document.body.appendChild(notificationDiv);
+  
+    setTimeout(() => {
+      notificationDiv.remove();
+    }, 3000);
+  }
+  
+  // Notify user of data update
+  function notifyDataUpdated() {
+    showNotification('Quotes updated from the server!');
+  }
+  
   document.getElementById('newQuote').addEventListener('click', showRandomQuote);
-  loadQuotes(); // Load quotes and initialize the page
+  loadQuotes();
+  startSyncingPeriodically();
   
