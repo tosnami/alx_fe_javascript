@@ -95,62 +95,88 @@ let quotes = [
   }
   
   // Fetch quotes from the server (mock API)
-  function fetchQuotesFromServer() {
-    fetch('https://jsonplaceholder.typicode.com/posts')
-      .then(response => response.json())
-      .then(serverData => {
-        const newQuotes = serverData.map(post => ({
-          text: post.title,
-          category: 'General'
-        }));
-        syncQuotes(newQuotes);
-      })
-      .catch(error => console.error('Error fetching server data:', error));
+  async function fetchQuotesFromServer() {
+    try {
+      const response = await fetch('https://jsonplaceholder.typicode.com/posts'); // Mock API endpoint
+      const serverData = await response.json();
+  
+      // For this example, we assume each post's title is a quote
+      const newQuotes = serverData.map(post => ({
+        text: post.title, 
+        category: 'General' // Assign default category
+      }));
+  
+      // Sync server data with local data
+      syncQuotes(newQuotes);
+    } catch (error) {
+      console.error('Error fetching server data:', error);
+    }
+  }
+  
+  // Post new quote to the server (mock API)
+  async function postQuoteToServer(quote) {
+    try {
+      const response = await fetch('https://jsonplaceholder.typicode.com/posts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          title: quote.text, 
+          body: quote.text, 
+          category: quote.category
+        })
+      });
+  
+      const data = await response.json();
+      console.log('Successfully posted quote to server:', data);
+    } catch (error) {
+      console.error('Error posting quote to server:', error);
+    }
   }
   
   // Sync local quotes with server data
   function syncQuotes(serverQuotes) {
     const localQuotes = JSON.parse(localStorage.getItem('quotes')) || [];
-    
+  
     serverQuotes.forEach(serverQuote => {
       const existingQuoteIndex = localQuotes.findIndex(localQuote => localQuote.text === serverQuote.text);
       
       if (existingQuoteIndex === -1) {
-        localQuotes.push(serverQuote);
+        localQuotes.push(serverQuote); // If no conflict, add to local
       } else {
+        // Conflict resolution: Update the local quote with the server quote (if necessary)
         localQuotes[existingQuoteIndex] = serverQuote;
+        showNotification('Conflict resolved: Updated local data with server quote!');
       }
     });
-    
-    localStorage.setItem('quotes', JSON.stringify(localQuotes));
-    notifyDataUpdated(); // Show notification when data is synced
+  
+    localStorage.setItem('quotes', JSON.stringify(localQuotes)); // Save merged data
+    showNotification('Quotes updated from the server!');
   }
   
   // Periodically check for new quotes from the server
   function startSyncingPeriodically() {
     setInterval(() => {
       fetchQuotesFromServer(); // Fetch quotes from the server periodically
-    }, 5000);
+    }, 5000); // Every 5 seconds, adjust as needed
   }
   
-  // Show a notification
+  // Show a notification in the UI
   function showNotification(message) {
     const notificationDiv = document.createElement('div');
     notificationDiv.classList.add('notification');
     notificationDiv.textContent = message;
     document.body.appendChild(notificationDiv);
   
+    // Remove notification after 3 seconds
     setTimeout(() => {
       notificationDiv.remove();
     }, 3000);
   }
   
-  // Notify user of data update
-  function notifyDataUpdated() {
-    showNotification('Quotes updated from the server!');
-  }
-  
+  // Initialize the app
   document.getElementById('newQuote').addEventListener('click', showRandomQuote);
-  loadQuotes();
-  startSyncingPeriodically();
+  loadQuotes(); // Load quotes from local storage
+  startSyncingPeriodically(); // Start periodic syncing
   
